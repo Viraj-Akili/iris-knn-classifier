@@ -2,7 +2,7 @@
 
 [![CI/CD Release Pipeline](https://github.com/Viraj-Akili/iris-knn-classifier/actions/workflows/ci.yml/badge.svg)](https://github.com/Viraj-Akili/iris-knn-classifier/actions/workflows/ci.yml)
 ![Python Version](https://img.shields.io/badge/python-3.11%2B-blue.svg)
-![Tests](https://img.shields.io/badge/tests-40%2F40%20passed-brightgreen.svg)
+![Tests](https://img.shields.io/badge/tests-41%2F41%20passed-brightgreen.svg)
 ![Coverage](https://img.shields.io/badge/coverage-91.7%25-success.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-blue.svg)
 ![Linter](https://img.shields.io/badge/lint-ruff%20clean-blueviolet.svg)
@@ -91,12 +91,12 @@ iris-knn-classifier/
 │   │   └── charts.py           # Interactive Altair probability, distribution, and feature charts
 │   ├── pages/
 │   │   ├── __init__.py
-│   │   ├── 1_Real_Time_Inference.py     # Interactive prediction UI with specimen presets
-│   │   ├── 2_Live_Observability.py      # Real-time Prometheus metrics, class & confidence tiers
-│   │   ├── 3_Data_Drift_Analysis.py     # Two-Sample KS, Wasserstein distance, & PSI inspector
-│   │   ├── 4_Model_Tournament.py        # 7-model tournament leaderboard & CV variance plots
-│   │   ├── 5_Error_Analysis.py          # Confusion matrix & misclassified sample deep-dive
-│   │   └── 6_Model_Card_Explainability.py # Model card governance & linear SVM feature weights
+│   │   ├── 1_Inference.py      # Interactive prediction UI with specimen presets
+│   │   ├── 2_Monitoring.py     # Real-time Prometheus metrics, class & confidence tiers
+│   │   ├── 3_Drift.py          # Two-Sample KS, Wasserstein distance, & PSI inspector
+│   │   ├── 4_Models.py         # 7-model tournament leaderboard & CV variance plots
+│   │   ├── 5_Evaluation.py     # Confusion matrix & misclassified sample deep-dive
+│   │   └── 6_Model.py          # Model card governance & linear SVM feature weights
 │   └── utils/
 │       ├── __init__.py
 │       └── formatting.py       # Theme styling, badge HTML formatters, and latency formatters
