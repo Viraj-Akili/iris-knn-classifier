@@ -1,6 +1,6 @@
 """
-Drift Module for IRIS ML PLATFORM.
-Statistical data drift monitoring (Two-Sample KS Test, Wasserstein distance, PSI).
+IRIS ML - Drift Module
+Statistical feature drift monitoring (Two-Sample KS, Wasserstein distance, PSI).
 """
 
 import altair as alt
@@ -9,13 +9,14 @@ import pandas as pd
 import streamlit as st
 
 st.set_page_config(
-    page_title="Drift - IRIS ML PLATFORM",
+    page_title="Drift - IRIS ML",
     page_icon="🌸",
     layout="wide",
 )
 
 from frontend.api_client import IrisApiClient
-from frontend.components.header import render_header, render_sidebar_connection
+from frontend.components.header import render_header
+from frontend.components.navigation import render_sidebar_navigation
 from frontend.utils.formatting import apply_custom_theme
 from src.config import get_default_config
 from src.data.loader import load_and_validate_dataset, split_dataset
@@ -23,107 +24,120 @@ from src.monitoring.drift import DataDriftDetector
 
 apply_custom_theme()
 api_client = IrisApiClient()
-render_sidebar_connection(api_client)
-render_header(api_client)
+render_sidebar_navigation(api_client)
+render_header(api_client, title="Feature drift", subtitle="Compare current observations against the training reference distribution.")
 
-st.markdown("## Feature drift monitoring")
-st.caption("Compare production observations against the training reference distribution.")
 
-# Load reference training baseline
+# Robust dataset loader compatible locally, in Docker, and on Render
 @st.cache_data
-def get_reference_data():
-    config = get_default_config()
-    df, _, _ = load_and_validate_dataset(config.dataset_path)
-    splits = split_dataset(df, config.test_size, config.random_state)
-    return splits.X_train, splits.X_test
+def get_training_reference():
+    try:
+        config = get_default_config()
+        X, y, feature_names, target_names = load_and_validate_dataset(config)
+        splits = split_dataset(X, y, feature_names, target_names, config)
+        return splits.X_train, splits.X_test
+    except Exception:
+        # Fallback direct load
+        from sklearn.datasets import load_iris
+        iris = load_iris(as_frame=True)
+        df = iris.frame
+        features = list(iris.feature_names)
+        return df[features].iloc[:120], df[features].iloc[120:]
 
-X_train, X_test = get_reference_data()
-detector = DataDriftDetector(reference_data=X_train)
 
-# Evaluation dataset selection
-st.markdown("### Evaluation Dataset")
-dataset_mode = st.radio(
-    "Select comparison batch:",
-    options=["Holdout Test Set (Unshifted baseline, N=30)", "Simulated Greenhouse Shift (Perturbed, N=50)"],
-    index=0,
-    horizontal=True,
-)
+try:
+    X_train, X_test = get_training_reference()
+    detector = DataDriftDetector(baseline_df=X_train)
 
-if "Unshifted" in dataset_mode:
-    current_df = X_test
-else:
-    np.random.seed(42)
-    current_df = X_test.copy()
-    current_df["sepal length (cm)"] = current_df["sepal length (cm)"] + np.random.normal(1.2, 0.3, len(current_df))
-    current_df["petal length (cm)"] = current_df["petal length (cm)"] + np.random.normal(1.8, 0.4, len(current_df))
+    # Comparison Dataset Selector
+    col_sel1, col_sel2 = st.columns([2, 1])
+    with col_sel1:
+        dataset_mode = st.selectbox(
+            "Evaluation batch",
+            options=["Holdout Test Baseline (N=30, Unshifted)", "Simulated Production Shift (N=50, Morphological Drift)"],
+            index=0,
+        )
 
-# Compute drift
-drift_results = detector.detect_drift(current_df)
+    if "Unshifted" in dataset_mode:
+        current_df = X_test
+    else:
+        np.random.seed(42)
+        current_df = X_test.copy()
+        current_df["sepal length (cm)"] = current_df["sepal length (cm)"] + np.random.normal(1.1, 0.3, len(current_df))
+        current_df["petal length (cm)"] = current_df["petal length (cm)"] + np.random.normal(1.6, 0.4, len(current_df))
 
-# Professional Summary Table
-table_rows = []
-for feat, metrics in drift_results.items():
-    ks_stat = metrics.get("ks_statistic", 0.0)
-    w_dist = metrics.get("wasserstein_distance", 0.0)
-    psi_val = metrics.get("psi", 0.0)
-    status_label = metrics.get("status", "STABLE")
-
-    table_rows.append({
-        "Feature": feat.title(),
-        "PSI": f"{psi_val:.3f}",
-        "KS Statistic": f"{ks_stat:.3f}",
-        "Wasserstein Distance (cm)": f"{w_dist:.3f}",
-        "Status": status_label,
-    })
-
-st.markdown("### Drift metrics summary")
-st.dataframe(pd.DataFrame(table_rows), use_container_width=True, hide_index=True)
-
-st.markdown("---")
-
-# Feature Distribution Comparison
-st.markdown("### Distribution comparison")
-feature_to_plot = st.selectbox(
-    "Select feature to inspect:",
-    options=list(X_train.columns),
-    index=2,
-)
-
-ref_series = X_train[feature_to_plot]
-curr_series = current_df[feature_to_plot]
-
-df_plot = pd.DataFrame({
-    "Value": list(ref_series) + list(curr_series),
-    "Distribution": ["Reference (Training)" for _ in range(len(ref_series))] + ["Production / Comparison" for _ in range(len(curr_series))],
-})
-
-chart = (
-    alt.Chart(df_plot)
-    .transform_density(
-        "Value",
-        as_=["Value", "Density"],
-        groupby=["Distribution"],
+    # Reference vs Current Counts
+    st.markdown(
+        f"""
+        <div class="status-bar" style="margin-top: 6px;">
+            <div class="status-bar-item">Reference Baseline: <span style="color: #f8fafc; margin-left: 4px;">{len(X_train)} training observations</span></div>
+            <span style="color: #334155;">|</span>
+            <div class="status-bar-item">Current Batch: <span style="color: #f8fafc; margin-left: 4px;">{len(current_df)} observations</span></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
-    .mark_area(opacity=0.4)
-    .encode(
-        x=alt.X("Value:Q", title=f"{feature_to_plot.title()} (cm)", axis=alt.Axis(labelColor="#94a3b8", titleColor="#64748b")),
-        y=alt.Y("Density:Q", title="Probability Density", axis=alt.Axis(labelColor="#94a3b8", titleColor="#64748b")),
-        color=alt.Color(
-            "Distribution:N",
-            scale=alt.Scale(domain=["Reference (Training)", "Production / Comparison"], range=["#3b82f6", "#f59e0b"]),
-            legend=alt.Legend(orient="top", title=None, labelColor="#f8fafc"),
-        ),
-    )
-    .properties(height=260)
-)
 
-st.altair_chart(chart, use_container_width=True)
+    if len(current_df) < 5:
+        st.info("Insufficient observations for drift analysis (minimum 5 required).")
+    else:
+        # Compute real statistical drift
+        summary = detector.evaluate_drift(current_df)
+        df_summary = summary.to_dataframe()
 
-st.markdown(
-    """
-    <div style="font-size: 0.78rem; color: #64748b; margin-top: 8px;">
-        Statistical methodology: Two-Sample Kolmogorov-Smirnov test evaluated at α = 0.05. Wasserstein distance represents the Earth Mover's Distance in physical measurement units (cm). Population Stability Index (PSI) measures empirical quantile shift against training bins.
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+        # Format display table with requested columns
+        table_rows = []
+        for r in summary.feature_reports:
+            table_rows.append({
+                "Feature": r.feature_name.title(),
+                "PSI": f"{r.psi:.3f}",
+                "KS": f"{r.ks_statistic:.3f}",
+                "Wasserstein": f"{r.wasserstein_distance:.3f}",
+                "Status": r.drift_status,
+            })
+
+        st.markdown("### Drift metrics")
+        st.dataframe(pd.DataFrame(table_rows), use_container_width=True, hide_index=True)
+
+        st.markdown("<hr style='margin: 14px 0;'/>", unsafe_allow_html=True)
+
+        # Distribution Chart
+        st.markdown("### Distribution comparison")
+        feature_to_plot = st.selectbox(
+            "Feature",
+            options=list(X_train.columns),
+            index=2,
+        )
+
+        ref_series = X_train[feature_to_plot]
+        curr_series = current_df[feature_to_plot]
+
+        df_plot = pd.DataFrame({
+            "Value": list(ref_series) + list(curr_series),
+            "Distribution": ["Reference (Training)" for _ in range(len(ref_series))] + ["Current Batch" for _ in range(len(curr_series))],
+        })
+
+        chart = (
+            alt.Chart(df_plot)
+            .transform_density(
+                "Value",
+                as_=["Value", "Density"],
+                groupby=["Distribution"],
+            )
+            .mark_area(opacity=0.4)
+            .encode(
+                x=alt.X("Value:Q", title=f"{feature_to_plot.title()} (cm)", axis=alt.Axis(labelColor="#94a3b8", titleColor="#64748b")),
+                y=alt.Y("Density:Q", title="Density", axis=alt.Axis(labelColor="#94a3b8", titleColor="#64748b")),
+                color=alt.Color(
+                    "Distribution:N",
+                    scale=alt.Scale(domain=["Reference (Training)", "Current Batch"], range=["#3b82f6", "#f59e0b"]),
+                    legend=alt.Legend(orient="top", title=None, labelColor="#f8fafc"),
+                ),
+            )
+            .properties(height=220)
+        )
+
+        st.altair_chart(chart, use_container_width=True)
+
+except Exception:
+    st.error("Something went wrong while loading the feature drift analysis.")

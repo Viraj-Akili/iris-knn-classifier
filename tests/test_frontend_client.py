@@ -274,4 +274,63 @@ def test_altair_charts_schema_validity():
     assert spec5["encoding"]["color"]["scale"]["scheme"] == "tealblues"
 
 
+def test_drift_reference_dataset_loading_compatibility():
+    """Verify that dataset loading for the drift module works without AttributeError on ExperimentConfig."""
+    from src.config import ExperimentConfig, get_default_config
+    from src.data.loader import load_and_validate_dataset, split_dataset
+
+    config = get_default_config()
+    assert isinstance(config, ExperimentConfig)
+    # Validate that load_and_validate_dataset and split_dataset accept the config
+    X, y, feature_names, target_names = load_and_validate_dataset(config)
+    assert X.shape == (150, 4)
+    assert len(y) == 150
+
+    splits = split_dataset(X, y, feature_names, target_names, config)
+    assert splits.X_train.shape == (120, 4)
+    assert splits.X_test.shape == (30, 4)
+
+
+def test_drift_insufficient_samples_detection():
+    """Verify drift detector handles empty or minimal data gracefully without crashing."""
+    import pandas as pd
+
+    from src.monitoring.drift import DataDriftDetector
+
+    ref_df = pd.DataFrame({
+        "sepal length (cm)": [5.1, 4.9, 4.7, 4.6, 5.0],
+        "sepal width (cm)": [3.5, 3.0, 3.2, 3.1, 3.6],
+        "petal length (cm)": [1.4, 1.4, 1.3, 1.5, 1.4],
+        "petal width (cm)": [0.2, 0.2, 0.2, 0.2, 0.2],
+    })
+    detector = DataDriftDetector(baseline_df=ref_df)
+
+    # Empty comparison
+    empty_df = pd.DataFrame(columns=ref_df.columns)
+    summary = detector.evaluate_drift(empty_df)
+    assert summary is not None
+    for rep in summary.feature_reports:
+        assert rep.drift_status == "INSUFFICIENT_DATA"
+
+
+
+def test_sidebar_navigation_rendering(api_client):
+    """Verify sidebar navigation renders cleanly for both online and offline states."""
+    from frontend.components.navigation import render_sidebar_navigation
+
+    with patch("streamlit.sidebar"):
+        with patch("streamlit.page_link") as mock_page_link, patch("httpx.Client.get") as mock_get:
+            # Online state
+            mock_get.return_value = MagicMock(status_code=200, json=lambda: {"model_version": "1.0.0"})
+            health = render_sidebar_navigation(api_client)
+            assert mock_page_link.called
+            assert health.get("model_version") == "1.0.0"
+
+            # Offline state
+            mock_get.side_effect = httpx.ConnectError("Refused")
+            health_offline = render_sidebar_navigation(api_client)
+            assert health_offline == {}
+
+
+
 

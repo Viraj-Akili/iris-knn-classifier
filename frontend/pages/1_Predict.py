@@ -1,27 +1,25 @@
 """
-Inference Module for IRIS ML PLATFORM.
-Real-time tabular species prediction against FastAPI SVM production backend.
+IRIS ML - Predict Module
+Real-time tabular classification against the production SVM model.
 """
 
 import streamlit as st
 
 st.set_page_config(
-    page_title="Inference - IRIS ML PLATFORM",
+    page_title="Predict - IRIS ML",
     page_icon="🌸",
     layout="wide",
 )
 
 from frontend.api_client import ApiConnectionError, ApiUnavailableError, ApiValidationError, IrisApiClient
-from frontend.components.header import render_header, render_sidebar_connection
+from frontend.components.header import render_header
+from frontend.components.navigation import render_sidebar_navigation
 from frontend.utils.formatting import apply_custom_theme, format_latency
 
 apply_custom_theme()
 api_client = IrisApiClient()
-render_sidebar_connection(api_client)
-render_header(api_client)
-
-st.markdown("## Predict species")
-st.caption("Run a real-time prediction against the production SVM model.")
+render_sidebar_navigation(api_client)
+render_header(api_client, title="Predict a specimen", subtitle="Run a prediction using the production SVM model.")
 
 # Presets selector
 PRESETS = {
@@ -33,7 +31,7 @@ PRESETS = {
 }
 
 selected_preset = st.selectbox(
-    "Select Specimen Preset",
+    "Specimen Preset",
     options=list(PRESETS.keys()),
     index=0,
 )
@@ -41,7 +39,7 @@ default_sl, default_sw, default_pl, default_pw = PRESETS[selected_preset]
 
 st.markdown("### Flower measurements")
 
-# Clean 2x2 grid for numerical inputs
+# Clean 2-column layout
 col1, col2 = st.columns(2)
 
 with col1:
@@ -52,7 +50,7 @@ with col1:
         value=float(default_sl),
         step=0.1,
         format="%.1f",
-        help="Valid biological range: 0.1 - 15.0 cm",
+        help="Valid range: 0.1 - 15.0 cm",
     )
     petal_length = st.number_input(
         "Petal length (cm)",
@@ -61,7 +59,7 @@ with col1:
         value=float(default_pl),
         step=0.1,
         format="%.1f",
-        help="Valid biological range: 0.1 - 15.0 cm",
+        help="Valid range: 0.1 - 15.0 cm",
     )
 
 with col2:
@@ -72,7 +70,7 @@ with col2:
         value=float(default_sw),
         step=0.1,
         format="%.1f",
-        help="Valid biological range: 0.1 - 15.0 cm",
+        help="Valid range: 0.1 - 15.0 cm",
     )
     petal_width = st.number_input(
         "Petal width (cm)",
@@ -81,15 +79,15 @@ with col2:
         value=float(default_pw),
         step=0.1,
         format="%.1f",
-        help="Valid biological range: 0.1 - 15.0 cm",
+        help="Valid range: 0.1 - 15.0 cm",
     )
 
-st.markdown("<br>", unsafe_allow_html=True)
-run_button = st.button("Predict species", type="primary")
+st.markdown("<div style='margin-top: 6px;'></div>", unsafe_allow_html=True)
+run_button = st.button("Predict specimen", type="primary")
 
 if run_button:
     try:
-        with st.spinner("Executing inference..."):
+        with st.spinner("Classifying specimen..."):
             response = api_client.predict(
                 sepal_length=sepal_length,
                 sepal_width=sepal_width,
@@ -111,15 +109,16 @@ if run_button:
         elif "VIRGINICA" in pred_class:
             color_class = "pred-virginica"
 
-        # Prediction Result Panel
+        # Result Panel
         st.markdown(
             f"""
             <div class="prediction-panel">
                 <div class="prediction-label">Prediction</div>
                 <div class="prediction-title {color_class}">{pred_class}</div>
-                <div style="font-size: 0.95rem; color: #94a3b8; margin-bottom: 16px;">
-                    Confidence: <strong style="color: #f8fafc; font-family: 'JetBrains Mono', monospace;">{confidence * 100:.1f}%</strong>
+                <div style="font-size: 0.9rem; color: #94a3b8; margin-bottom: 14px;">
+                    Confidence: <strong style="color: #f8fafc; font-family: 'JetBrains Mono', monospace;">{confidence * 100:.2f}%</strong>
                 </div>
+                <div style="font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #64748b; margin-bottom: 8px;">Class Probability</div>
             """,
             unsafe_allow_html=True,
         )
@@ -132,11 +131,11 @@ if run_button:
             col = colors.get(species_key.lower(), "#3b82f6")
             prob_rows += f"""
             <div class="prob-row">
-                <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; width: 100px; color: #94a3b8; font-weight: 600;">{species_key.upper()}</span>
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; width: 90px; color: #94a3b8; font-weight: 600;">{species_key.capitalize()}</span>
                 <div class="prob-bar-bg">
                     <div class="prob-bar-fill" style="width: {pct:.1f}%; background-color: {col};"></div>
                 </div>
-                <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; width: 50px; text-align: right; color: #f8fafc;">{pct:.1f}%</span>
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; width: 55px; text-align: right; color: #f8fafc;">{pct:.2f}%</span>
             </div>
             """
 
@@ -144,24 +143,27 @@ if run_button:
 
         st.markdown(
             f"""
-                <hr style="margin: 16px 0 12px 0; border-top: 1px solid #334155;"/>
-                <div style="display: flex; flex-wrap: wrap; gap: 12px; font-size: 0.78rem; color: #64748b; font-family: 'JetBrains Mono', monospace;">
-                    <span>Inference latency: <strong style="color: #94a3b8;">{format_latency(latency_ms)}</strong></span>
+                <hr style="margin: 14px 0 10px 0; border-top: 1px solid #1e293b;"/>
+                <div style="display: flex; flex-wrap: wrap; gap: 12px; font-size: 0.75rem; color: #64748b; font-family: 'JetBrains Mono', monospace;">
+                    <span>Inference: <strong style="color: #94a3b8;">{format_latency(latency_ms)}</strong></span>
                     <span>•</span>
                     <span>Model: <strong style="color: #94a3b8;">SVM v{model_ver}</strong></span>
                     <span>•</span>
-                    <span>Request ID: <strong style="color: #94a3b8;">{request_id[:12]}...</strong></span>
+                    <span>Request: <strong style="color: #94a3b8;">{request_id[:8]}...</strong></span>
                 </div>
             </div>
             """,
             unsafe_allow_html=True,
         )
 
+        with st.expander("View response →"):
+            st.json(response)
+
     except ApiValidationError as e:
         st.error(f"Input validation error: {e}")
     except ApiUnavailableError:
-        st.error("Production model service is currently unavailable.")
-    except ApiConnectionError as e:
-        st.error(f"Could not connect to FastAPI backend: {e}")
-    except Exception as e:
-        st.error(f"Prediction failed: {e}")
+        st.error("Model is currently unavailable.")
+    except ApiConnectionError:
+        st.error("Unable to reach the inference API.")
+    except Exception:
+        st.error("Something went wrong while executing the prediction.")

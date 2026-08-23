@@ -1,97 +1,159 @@
 """
-Overview & Landing Hub for IRIS ML PLATFORM.
+IRIS ML - Production ML Inference Platform
+Overview & Operations Hub
 """
 
 import streamlit as st
 
 st.set_page_config(
-    page_title="Overview - IRIS ML PLATFORM",
+    page_title="IRIS ML - Production ML",
     page_icon="🌸",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
 from frontend.api_client import IrisApiClient
-from frontend.components.header import render_header, render_sidebar_connection
 from frontend.components.metrics_cards import render_kpi_card
+from frontend.components.navigation import render_sidebar_navigation
 from frontend.utils.formatting import apply_custom_theme
 
 # Apply design system
 apply_custom_theme()
 
-# Initialize API client
+# Unified Sidebar Navigation
 api_client = IrisApiClient()
-health_data = render_sidebar_connection(api_client)
-render_header(api_client)
+health_data = render_sidebar_navigation(api_client)
 
-# Query live model info & telemetry
-model_info = {}
-telemetry = {}
-try:
-    if api_client.check_connection():
-        model_info = api_client.get_model_info()
-        telemetry = api_client.get_observability_summary()
-except Exception:
-    pass
-
-cv_acc = model_info.get("cv_accuracy", 0.9750)
-holdout_acc = model_info.get("test_accuracy", 0.9333)
-model_name = model_info.get("model_name", "Support Vector Machine")
-model_ver = model_info.get("model_version", "1.0.0")
-
-lat_stats = telemetry.get("latency_percentiles", {})
-p95_lat = lat_stats.get("p95_ms", 1.18)
-if p95_lat == 0.0:
-    p95_lat = 1.18
-
-# Compact KPI Row
-kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-with kpi1:
-    render_kpi_card("Model", f"{model_name}", f"v{model_ver} (Linear Kernel)")
-with kpi2:
-    render_kpi_card("CV Accuracy", f"{cv_acc * 100:.2f}%", "5-Fold Stratified (±2.0%)")
-with kpi3:
-    render_kpi_card("Holdout Accuracy", f"{holdout_acc * 100:.2f}%", "28/30 test specimens")
-with kpi4:
-    render_kpi_card("p95 Latency", f"{p95_lat:.2f} ms", "Production serving target")
-
-st.markdown("<br>", unsafe_allow_html=True)
-
-# System Overview
-st.markdown("### System Overview")
+# Header
 st.markdown(
     """
-    Production tabular classification service backed by a persisted Support Vector Machine model with real-time REST inference,
-    continuous Prometheus telemetry, sliding-window latency percentiles, and statistical data drift detection.
-    """
+    <div style="padding-bottom: 8px;">
+        <div style="font-size: 1.6rem; font-weight: 700; color: #f8fafc; letter-spacing: -0.02em;">IRIS ML</div>
+        <div style="font-size: 0.95rem; font-weight: 600; color: #94a3b8; margin-top: 1px;">Production ML Inference Platform</div>
+        <div style="font-size: 0.82rem; color: #64748b; margin-top: 2px;">Real-time tabular classification, model monitoring, and evaluation.</div>
+    </div>
+    """,
+    unsafe_allow_html=True,
 )
 
-st.markdown("---")
+# Live Status Bar
+is_online = api_client.check_connection()
+model_ver = health_data.get("model_version", "1.0.0") if is_online else "1.0.0"
 
-# Quick Start Section
-col_left, col_right = st.columns([2, 1])
+status_dot_html = '<span class="status-dot dot-green"></span> Production API Online' if is_online else '<span class="status-dot dot-red"></span> API Offline'
 
-with col_left:
-    st.markdown("### Quick Start")
-    st.markdown("Enter four biological morphology measurements (cm) to execute a real-time prediction against the production pipeline.")
+st.markdown(
+    f"""
+    <div class="status-bar">
+        <div class="status-bar-item" style="color: {'#10b981' if is_online else '#ef4444'}; font-weight: 600;">
+            {status_dot_html}
+        </div>
+        <span style="color: #334155;">|</span>
+        <div class="status-bar-item">Model: <span style="color: #f8fafc; margin-left: 4px;">SVM v{model_ver}</span></div>
+        <span style="color: #334155;">|</span>
+        <div class="status-bar-item">Dataset: <span style="color: #f8fafc; margin-left: 4px;">Iris</span></div>
+        <span style="color: #334155;">|</span>
+        <div class="status-bar-item">Classes: <span style="color: #f8fafc; margin-left: 4px;">3</span></div>
+        <span style="color: #334155;">|</span>
+        <div class="status-bar-item">Features: <span style="color: #f8fafc; margin-left: 4px;">4</span></div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
+# Run a Prediction Section
+st.markdown("### Run a Prediction")
+col_pred_info, col_pred_btn = st.columns([3, 1])
+with col_pred_info:
     st.markdown(
         """
-        - **Tabular Features**: Sepal Length, Sepal Width, Petal Length, Petal Width (numerical measurements in cm).
-        - **Champion Pipeline**: `StandardScaler` encapsulation with zero fold leakage ➔ `SVC(kernel='linear', C=0.1)`.
-        - **Target Classes**: `setosa`, `versicolor`, `virginica`.
+        <div style="font-size: 0.85rem; color: #94a3b8; line-height: 1.5;">
+            Enter four biological flower measurements (sepal & petal length/width in cm) to classify a botanical specimen using the production Linear SVM model.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+with col_pred_btn:
+    st.page_link("pages/1_Predict.py", label="Predict a specimen →")
+
+st.markdown("<hr style='margin: 16px 0;'/>", unsafe_allow_html=True)
+
+# Model Performance Section
+st.markdown("### Model Performance")
+k1, k2, k3 = st.columns(3)
+with k1:
+    render_kpi_card("CV Accuracy", "97.50% ± 2.04%", "5-Fold Stratified CV (N=120)")
+with k2:
+    render_kpi_card("Holdout Accuracy", "93.33%", "28/30 untouched test samples")
+with k3:
+    render_kpi_card("Inference", "<3 ms", "Server execution SLA")
+
+st.markdown("<hr style='margin: 16px 0;'/>", unsafe_allow_html=True)
+
+# System Capabilities Section (2x3 Grid)
+st.markdown("### System Capabilities")
+c1, c2, c3 = st.columns(3)
+with c1:
+    st.markdown(
         """
+        <div class="cap-box">
+            <div class="cap-title">Real-time inference</div>
+            <div class="cap-desc">Sub-3ms REST inference pipeline with calibrated Platt scaling probabilities.</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+with c2:
+    st.markdown(
+        """
+        <div class="cap-box">
+            <div class="cap-title">Model monitoring</div>
+            <div class="cap-desc">Continuous Prometheus telemetry, latency percentiles, and Welford running moments.</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+with c3:
+    st.markdown(
+        """
+        <div class="cap-box">
+            <div class="cap-title">Feature drift</div>
+            <div class="cap-desc">Statistical distribution comparison using Two-Sample KS, Wasserstein, and PSI.</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
-with col_right:
-    st.markdown("### Platform Modules")
+st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+
+c4, c5, c6 = st.columns(3)
+with c4:
     st.markdown(
         """
-        1. **Inference**: Real-time species prediction with specimen presets
-        2. **Monitoring**: Latency percentiles & prediction distributions
-        3. **Drift**: Two-Sample KS, Wasserstein & PSI drift inspection
-        4. **Models**: 7-model tournament benchmark leaderboard
-        5. **Evaluation**: Holdout confusion matrix & nearest-neighbor analysis
-        6. **Model**: Governance specification & linear SVM feature attribution
+        <div class="cap-box">
+            <div class="cap-title">Model comparison</div>
+            <div class="cap-desc">Automated 7-model tournament benchmark with stratified 5-fold cross-validation.</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+with c5:
+    st.markdown(
         """
+        <div class="cap-box">
+            <div class="cap-title">Error analysis</div>
+            <div class="cap-desc">Holdout confusion matrix, classification metrics, and boundary specimen analysis.</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+with c6:
+    st.markdown(
+        """
+        <div class="cap-box">
+            <div class="cap-title">Explainability</div>
+            <div class="cap-desc">Model Card governance specifications and linear SVM feature weight attribution.</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )

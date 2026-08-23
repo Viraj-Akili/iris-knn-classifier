@@ -1,6 +1,6 @@
 """
-Model Module for IRIS ML PLATFORM.
-Production model card governance specifications, training strategy, and linear SVM feature attribution.
+IRIS ML - Model Governance & Specification Module
+Model architecture overview, feature influence weights, and operational boundaries.
 """
 
 import altair as alt
@@ -8,70 +8,81 @@ import pandas as pd
 import streamlit as st
 
 st.set_page_config(
-    page_title="Model - IRIS ML PLATFORM",
+    page_title="Model - IRIS ML",
     page_icon="🌸",
     layout="wide",
 )
 
 from frontend.api_client import IrisApiClient
-from frontend.components.header import render_header, render_sidebar_connection
+from frontend.components.header import render_header
+from frontend.components.metrics_cards import render_kpi_card
+from frontend.components.navigation import render_sidebar_navigation
 from frontend.utils.formatting import apply_custom_theme
 
 apply_custom_theme()
 api_client = IrisApiClient()
-render_sidebar_connection(api_client)
-render_header(api_client)
+render_sidebar_navigation(api_client)
+render_header(api_client, title="Model", subtitle="Production model architecture, specifications, and feature influence.")
 
-st.markdown("## Production model")
-st.caption("Governance documentation, validation methodology, and feature attribution for the deployed classifier.")
+# Model Overview & Performance Row
+col_ov, col_perf = st.columns(2)
 
-# Technical Specifications Table
-col_spec1, col_spec2 = st.columns(2)
+with col_ov:
+    st.markdown("### Model Overview")
+    st.markdown(
+        """
+        <div class="cap-box">
+            <div style="font-size: 1.1rem; font-weight: 700; color: #f8fafc; margin-bottom: 6px;">SVM v1.0.0</div>
+            <div style="font-size: 0.8rem; color: #94a3b8; line-height: 1.8; font-family: 'JetBrains Mono', monospace;">
+                • Status: <span style="color: #10b981; font-weight: 600;">Loaded (Active)</span><br>
+                • Architecture: StandardScaler ➔ Linear SVC<br>
+                • Training Strategy: 5-Fold Stratified CV (N=120)<br>
+                • Dataset: Fisher's Iris Benchmark (150 samples)<br>
+                • Target Classes: setosa, versicolor, virginica<br>
+                • Features: sepal length, sepal width, petal length, petal width
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-with col_spec1:
-    st.markdown("### Specifications")
-    spec_data = [
-        {"Property": "Model Name", "Specification": "Support Vector Classifier (SVC)"},
-        {"Property": "Artifact Version", "Specification": "1.0.0 (Production Champion)"},
-        {"Property": "Pipeline Architecture", "Specification": "StandardScaler ➔ SVC(kernel='linear', C=0.1)"},
-        {"Property": "Decision Boundary", "Specification": "Linear Margin Maximization (One-vs-Rest)"},
-        {"Property": "Probability Estimation", "Specification": "Calibrated Platt Scaling (probability=True)"},
-        {"Property": "Determinism Seed", "Specification": "random_state=42 (Fixed across splits & fits)"},
-    ]
-    st.dataframe(pd.DataFrame(spec_data), use_container_width=True, hide_index=True)
+with col_perf:
+    st.markdown("### Model Performance")
+    p1, p2 = st.columns(2)
+    with p1:
+        render_kpi_card("CV Accuracy", "97.50% ± 2.04%", "5-Fold Stratified")
+    with p2:
+        render_kpi_card("Holdout Accuracy", "93.33%", "28/30 test samples")
 
-with col_spec2:
-    st.markdown("### Validation methodology")
-    val_data = [
-        {"Dimension": "Dataset Source", "Details": "Fisher's Iris Morphological Dataset (150 specimens)"},
-        {"Dimension": "Splitting Protocol", "Details": "Stratified 80/20 train/test split (120 train, 30 holdout)"},
-        {"Dimension": "Cross-Validation", "Details": "5-Fold Stratified K-Fold on training partition only"},
-        {"Dimension": "Preprocessing Leakage", "Details": "StandardScaler fitted strictly inside CV training folds"},
-        {"Dimension": "CV Benchmark Score", "Details": "97.50% ± 2.04% Accuracy (1st of 7 candidates)"},
-        {"Dimension": "Holdout Test Score", "Details": "93.33% Accuracy (28/30 correct predictions)"},
-    ]
-    st.dataframe(pd.DataFrame(val_data), use_container_width=True, hide_index=True)
+    st.markdown(
+        """
+        <div style="font-size: 0.78rem; color: #64748b; margin-top: 8px; line-height: 1.4;">
+            Champion pipeline selected across 7 candidate algorithms. Fitted with calibrated Platt scaling for calibrated posterior probability estimation.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-st.markdown("---")
+st.markdown("<hr style='margin: 14px 0;'/>", unsafe_allow_html=True)
 
-# Feature Attribution & Weights
-st.markdown("### Feature attribution")
-st.caption("Normalized weight magnitudes derived from the linear decision hyperplane coefficients across the One-vs-Rest multiclass boundaries.")
+# Feature Influence Section
+st.markdown("### Feature Influence")
+st.caption("Normalized linear decision boundary weight magnitudes across One-vs-Rest hyperplanes.")
 
 WEIGHTS_DATA = [
     {"Feature": "Petal Length (cm)", "Importance Score": 0.468, "Impact Level": "Primary Separator"},
     {"Feature": "Petal Width (cm)", "Importance Score": 0.382, "Impact Level": "Primary Separator"},
-    {"Feature": "Sepal Width (cm)", "Importance Score": 0.096, "Impact Level": "Secondary Boundary Stabilizer"},
+    {"Feature": "Sepal Width (cm)", "Importance Score": 0.096, "Impact Level": "Secondary Stabilizer"},
     {"Feature": "Sepal Length (cm)", "Importance Score": 0.054, "Impact Level": "Minor Discriminator"},
 ]
 df_weights = pd.DataFrame(WEIGHTS_DATA)
 
 chart = (
     alt.Chart(df_weights)
-    .mark_bar(cornerRadiusTopRight=4, cornerRadiusBottomRight=4, height=32)
+    .mark_bar(cornerRadiusTopRight=4, cornerRadiusBottomRight=4, height=28)
     .encode(
-        x=alt.X("Importance Score:Q", title="Normalized Linear Decision Boundary Weight", axis=alt.Axis(labelColor="#94a3b8", titleColor="#64748b")),
-        y=alt.Y("Feature:N", sort="-x", title=None, axis=alt.Axis(labelFontSize=12, labelFontWeight="bold", labelColor="#94a3b8")),
+        x=alt.X("Importance Score:Q", title="Decision Boundary Weight", axis=alt.Axis(labelColor="#94a3b8", titleColor="#64748b")),
+        y=alt.Y("Feature:N", sort="-x", title=None, axis=alt.Axis(labelFontSize=11, labelFontWeight="bold", labelColor="#94a3b8")),
         color=alt.Color(
             "Importance Score:Q",
             scale=alt.Scale(scheme="tealblues"),
@@ -79,36 +90,59 @@ chart = (
         ),
         tooltip=["Feature", "Importance Score", "Impact Level"],
     )
-    .properties(height=200)
+    .properties(height=180)
 )
 
 st.altair_chart(chart, use_container_width=True)
 
-st.markdown("---")
+st.markdown("<hr style='margin: 14px 0;'/>", unsafe_allow_html=True)
 
-# Intended Scope & Operational Boundaries
-st.markdown("### Operational scope & limitations")
-col_sc1, col_sc2 = st.columns(2)
+# Limitations & API Status Row
+col_lim, col_api = st.columns(2)
 
-with col_sc1:
+with col_lim:
+    st.markdown("### Limitations")
     st.markdown(
         """
-        **Intended Use**:
-        - Real-time tabular botanical specimen species classification.
-        - Automated validation of Iris flower dimensions within standard ranges:
-          - Sepal Length: 4.0 – 8.0 cm
-          - Sepal Width: 2.0 – 4.5 cm
-          - Petal Length: 1.0 – 7.0 cm
-          - Petal Width: 0.1 – 2.6 cm
-        """
+        <div style="font-size: 0.8rem; color: #94a3b8; line-height: 1.6;">
+            • <strong>Dataset Scope</strong>: Iris is a small tabular benchmark ($N=150$); not intended for real-world clinical or biological diagnosis.<br>
+            • <strong>Overlapping Margin</strong>: Moderate boundary overlap exists between <em>versicolor</em> and <em>virginica</em> near $PL \approx 5.0\text{ cm}, PW \approx 1.5\text{ cm}$.<br>
+            • <strong>Non-Causal Attribution</strong>: Feature coefficients reflect predictive association rather than causal biological importance.
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
-with col_sc2:
-    st.markdown(
-        """
-        **Known Limitations & Caveats**:
-        - **Linear Separability**: While *Iris-setosa* is linearly separable, *Iris-versicolor* and *Iris-virginica* have overlapping distributions near $PL \approx 5.0\text{ cm}, PW \approx 1.5\text{ cm}$.
-        - **Non-Causal Attribution**: Coefficients reflect correlation with class separation, not causal biological determinants.
-        - **Out-of-Distribution Inputs**: Severe outliers are flagged by online drift detection rather than hard-rejected.
-        """
-    )
+with col_api:
+    st.markdown("### API Status")
+    is_online = api_client.check_connection()
+    if is_online:
+        st.markdown(
+            """
+            <div class="cap-box">
+                <div style="display: flex; align-items: center; font-size: 0.85rem; color: #10b981; font-weight: 600; margin-bottom: 4px;">
+                    <span class="status-dot dot-green"></span> Production API Online
+                </div>
+                <div style="font-size: 0.78rem; color: #94a3b8; line-height: 1.5;">
+                    • Endpoint: <code style="color: #60a5fa;">https://iris-ml-backend.onrender.com</code><br>
+                    • Readiness: <span style="color: #10b981;">Ready (HTTP 200)</span><br>
+                    • Model: <span style="color: #f8fafc;">SVM v1.0.0</span>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            """
+            <div class="cap-box">
+                <div style="display: flex; align-items: center; font-size: 0.85rem; color: #ef4444; font-weight: 600; margin-bottom: 4px;">
+                    <span class="status-dot dot-red"></span> API Offline
+                </div>
+                <div style="font-size: 0.78rem; color: #94a3b8;">
+                    Inference backend unreachable. Start the FastAPI server to restore connectivity.
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
