@@ -1,0 +1,42 @@
+{
+  "champion_model": "Support Vector Machine",
+  "best_hyperparameters": {
+    "classifier__C": 0.1,
+    "classifier__gamma": "scale",
+    "classifier__kernel": "linear"
+  },
+  "cv_accuracy_mean": 0.975,
+  "cv_accuracy_std": 0.020412414523193135,
+  "cv_f1_macro_mean": 0.9749019607843138,
+  "cv_f1_weighted_mean": 0.9749019607843138,
+  "test_accuracy": 0.9333333333333333,
+  "test_precision_macro": 0.9333333333333332,
+  "test_precision_weighted": 0.9333333333333333,
+  "test_recall_macro": 0.9333333333333332,
+  "test_recall_weighted": 0.9333333333333333,
+  "test_f1_macro": 0.9333333333333332,
+  "test_f1_weighted": 0.9333333333333333,
+  "test_sample_count": 30,
+  "confusion_matrix": [
+    [
+      10,
+      0,
+      0
+    ],
+    [
+      0,
+      9,
+      1
+    ],
+    [
+      0,
+      1,
+      9
+    ]
+  ],
+  "class_labels": [
+    "setosa",
+    "versicolor",
+    "virginica"
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "model_name": "Support Vector Machine",
+  "model_version": "1.0.0",
+  "model_type": "SVC",
+  "training_timestamp": "2026-08-23T22:51:11.476868+00:00",
+  "feature_names": [
+    "sepal length (cm)",
+    "sepal width (cm)",
+    "petal length (cm)",
+    "petal width (cm)"
+  ],
+  "target_names": [
+    "setosa",
+    "versicolor",
+    "virginica"
+  ],
+  "cv_accuracy": 0.975,
+  "cv_accuracy_std": 0.020412414523193135,
+  "cv_f1_macro": 0.9749019607843138,
+  "test_accuracy": 0.9333333333333333,
+  "test_precision_macro": 0.9333333333333332,
+  "test_recall_macro": 0.9333333333333332,
+  "test_f1_macro": 0.9333333333333332,
+  "test_f1_weighted": 0.9333333333333333,
+  "best_hyperparameters": {
+    "classifier__C": 0.1,
+    "classifier__gamma": "scale",
+    "classifier__kernel": "linear"
+  }
+}

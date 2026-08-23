@@ -1,0 +1,39 @@
+# ============================================================
+# Enterprise ML Experimentation Configuration
+# Iris Benchmark Classification System
+# ============================================================
+
+experiment:
+  name: "iris_multimodel_benchmark"
+  random_seed: 42
+  description: "Production-quality leakage-free multi-model benchmarking on Iris dataset"
+
+data:
+  test_size: 0.20
+  stratify: true
+  expected_samples: 150
+  expected_features: 4
+  expected_classes: 3
+  feature_names:
+    - "sepal length (cm)"
+    - "sepal width (cm)"
+    - "petal length (cm)"
+    - "petal width (cm)"
+  target_names:
+    - "setosa"
+    - "versicolor"
+    - "virginica"
+
+cv:
+  n_splits: 5
+  shuffle: true
+  scoring_metric: "accuracy"
+  refit_metric: "accuracy"
+
+paths:
+  artifacts_dir: "artifacts"
+  metrics_dir: "artifacts/metrics"
+  experiments_dir: "artifacts/experiments"
+  predictions_dir: "artifacts/predictions"
+  plots_dir: "artifacts/plots"
+  models_dir: "artifacts/models"

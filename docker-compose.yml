@@ -1,0 +1,62 @@
+# =============================================================================
+# Production Docker Compose Architecture for Iris ML System
+# Services:
+#   1. backend  - FastAPI REST ML inference & Prometheus observability service
+#   2. frontend - Streamlit ML intelligence & telemetry dashboard
+# =============================================================================
+
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: iris-ml-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - CORS_ORIGINS=http://localhost:8501,http://127.0.0.1:8501,http://localhost:3000,http://127.0.0.1:3000
+      - LOG_LEVEL=INFO
+      - MODEL_ARTIFACT_PATH=/app/artifacts/models/champion_pipeline.joblib
+      - METADATA_ARTIFACT_PATH=/app/artifacts/models/champion_metadata.json
+      - PREDICTION_LOG_PATH=/app/artifacts/logs/predictions.jsonl
+      - ENABLE_PREDICTION_LOGGING=true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    networks:
+      - iris-ml-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: iris-ml-frontend
+    ports:
+      - "8501:8501"
+    environment:
+      - IRIS_API_URL=http://backend:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - iris-ml-network
+    restart: unless-stopped
+
+networks:
+  iris-ml-network:
+    driver: bridge
+    name: iris-ml-network

@@ -1,0 +1,59 @@
+# =============================================================================
+# Render Infrastructure Blueprint for Enterprise Iris ML System
+# Deploys:
+#   1. iris-ml-backend  (FastAPI REST + ML Model + Observability)
+#   2. iris-ml-frontend (Streamlit ML Intelligence Dashboard)
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # 1. FastAPI Real-Time ML Inference & Prometheus Observability Backend
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: iris-ml-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile.backend
+    plan: free
+    region: oregon
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: API_HOST
+        value: 0.0.0.0
+      - key: API_PORT
+        value: 8000
+      - key: API_DEBUG
+        value: false
+      - key: CORS_ORIGINS
+        value: https://iris-ml-frontend.onrender.com,https://share.streamlit.io,http://localhost:8501,http://127.0.0.1:8501
+      - key: LOG_LEVEL
+        value: INFO
+      - key: MODEL_ARTIFACT_PATH
+        value: artifacts/models/champion_pipeline.joblib
+      - key: METADATA_ARTIFACT_PATH
+        value: artifacts/models/champion_metadata.json
+      - key: PREDICTION_LOG_PATH
+        value: artifacts/logs/predictions.jsonl
+      - key: HIGH_CONFIDENCE_THRESHOLD
+        value: "0.90"
+      - key: LOW_CONFIDENCE_THRESHOLD
+        value: "0.70"
+      - key: ENABLE_PREDICTION_LOGGING
+        value: "true"
+
+  # ---------------------------------------------------------------------------
+  # 2. Streamlit ML Operations & Telemetry Dashboard Frontend
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: iris-ml-frontend
+    runtime: docker
+    dockerfilePath: ./Dockerfile.frontend
+    plan: free
+    region: oregon
+    healthCheckPath: /_stcore/health
+    autoDeploy: true
+    envVars:
+      - key: IRIS_API_URL
+        value: https://iris-ml-backend.onrender.com
+      - key: PORT
+        value: 8501
