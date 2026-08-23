@@ -9,11 +9,12 @@ from frontend.components.charts import (
     render_probability_chart,
 )
 from frontend.components.header import render_header, render_sidebar_connection
-from frontend.components.metrics_cards import render_kpi_row, render_latency_kpi_row
+from frontend.components.metrics_cards import render_kpi_card, render_kpi_row, render_latency_kpi_row
 
 __all__ = [
     "render_header",
     "render_sidebar_connection",
+    "render_kpi_card",
     "render_kpi_row",
     "render_latency_kpi_row",
     "render_probability_chart",

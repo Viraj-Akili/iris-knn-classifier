@@ -1,5 +1,5 @@
 """
-KPI metric card renderers for system throughput, latency percentiles, and error counts.
+Minimalist KPI and telemetry metric components for IRIS ML PLATFORM.
 """
 
 from typing import Any
@@ -7,82 +7,58 @@ from typing import Any
 import streamlit as st
 
 
-def render_kpi_row(summary: dict[str, Any]) -> None:
-    """Render top-level operational KPIs (Requests, Success, Failures, Mean Latency)."""
-    c1, c2, c3, c4 = st.columns(4)
-
-    total_req = summary.get("total_requests", 0)
-    succ_req = summary.get("successful_predictions", 0)
-    fail_req = summary.get("failed_requests", 0)
-    uptime_sec = summary.get("uptime_seconds", 0.0)
-
-    lat_stats = summary.get("latency_statistics_ms", {})
-    mean_lat = lat_stats.get("mean_ms", 0.0)
-
-    success_rate = (succ_req / total_req * 100.0) if total_req > 0 else 100.0
-
-    with c1:
-        st.markdown(
-            f"""
-            <div class="metric-card">
-                <div class="metric-label">Total Predictions</div>
-                <div class="metric-value">{total_req:,}</div>
-                <div class="metric-subtext">{succ_req} Successful ({success_rate:.1f}%)</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    with c2:
-        st.markdown(
-            f"""
-            <div class="metric-card">
-                <div class="metric-label">Mean Inference Latency</div>
-                <div class="metric-value">{mean_lat:.2f} <span style="font-size:1rem; font-weight:500;">ms</span></div>
-                <div class="metric-subtext">p50: {lat_stats.get('p50_ms', 0.0):.2f} ms</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    with c3:
-        st.markdown(
-            f"""
-            <div class="metric-card">
-                <div class="metric-label">Failed Requests</div>
-                <div class="metric-value" style="color: {'#ef4444' if fail_req > 0 else '#10b981'};">{fail_req}</div>
-                <div class="metric-subtext">Validation & Error Count</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    with c4:
-        st.markdown(
-            f"""
-            <div class="metric-card">
-                <div class="metric-label">Service Uptime</div>
-                <div class="metric-value">{uptime_sec:.1f} <span style="font-size:1rem; font-weight:500;">s</span></div>
-                <div class="metric-subtext">In-Memory Singleton</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+def render_kpi_card(label: str, value: str, subtext: str | None = None) -> None:
+    """Render a single minimalist KPI card."""
+    sub_html = f'<div class="kpi-sub">{subtext}</div>' if subtext else ""
+    st.markdown(
+        f"""
+        <div class="kpi-card">
+            <div class="kpi-label">{label}</div>
+            <div class="kpi-value">{value}</div>
+            {sub_html}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
-def render_latency_kpi_row(lat_stats: dict[str, float]) -> None:
-    """Render granular latency percentiles (p50, p90, p95, p99, Min, Max)."""
-    c1, c2, c3, c4, c5, c6 = st.columns(6)
+def render_kpi_row(
+    model_name: str,
+    cv_accuracy: float,
+    holdout_accuracy: float,
+    p95_latency_ms: float,
+) -> None:
+    """Render top-level KPI row for Overview and Dashboard."""
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        render_kpi_card("Model", model_name, "Linear SVM Champion")
+    with col2:
+        render_kpi_card("CV Accuracy", f"{cv_accuracy * 100.0:.2f}%", "5-Fold Stratified")
+    with col3:
+        render_kpi_card("Holdout Accuracy", f"{holdout_accuracy * 100.0:.2f}%", "Untouched Test Set")
+    with col4:
+        render_kpi_card("p95 Latency", f"{p95_latency_ms:.2f} ms", "Latency SLA Target")
 
-    with c1:
-        st.metric("p50 (Median)", f"{lat_stats.get('p50_ms', 0.0):.2f} ms")
-    with c2:
-        st.metric("p90", f"{lat_stats.get('p90_ms', lat_stats.get('p95_ms', 0.0)):.2f} ms")
-    with c3:
-        st.metric("p95", f"{lat_stats.get('p95_ms', 0.0):.2f} ms")
-    with c4:
-        st.metric("p99", f"{lat_stats.get('p99_ms', 0.0):.2f} ms")
-    with c5:
-        st.metric("Min", f"{lat_stats.get('min_ms', 0.0):.2f} ms")
-    with c6:
-        st.metric("Max", f"{lat_stats.get('max_ms', 0.0):.2f} ms")
+
+def render_latency_kpi_row(telemetry: dict[str, Any]) -> None:
+    """Render compact KPI row for operational latencies."""
+    lat_stats = telemetry.get("latency_percentiles", {})
+    p50 = lat_stats.get("p50_ms", 0.0)
+    p95 = lat_stats.get("p95_ms", 0.0)
+    p99 = lat_stats.get("p99_ms", 0.0)
+    total_reqs = telemetry.get("total_requests", 0)
+    failed_reqs = telemetry.get("failed_requests", 0)
+
+    success_rate = 100.0 if total_reqs == 0 else max(0.0, (total_reqs - failed_reqs) / total_reqs * 100.0)
+
+    col1, col2, col3, col4, col5 = st.columns(5)
+    with col1:
+        render_kpi_card("Requests", f"{total_reqs:,}", "Total served")
+    with col2:
+        render_kpi_card("Success Rate", f"{success_rate:.1f}%", f"{failed_reqs} errors")
+    with col3:
+        render_kpi_card("p50 Latency", f"{p50:.2f} ms", "Median")
+    with col4:
+        render_kpi_card("p95 Latency", f"{p95:.2f} ms", "Tail target")
+    with col5:
+        render_kpi_card("p99 Latency", f"{p99:.2f} ms", "Peak tail")

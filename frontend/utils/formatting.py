@@ -1,172 +1,175 @@
 """
-Visual styling, theme injection, and formatting utilities for ML Dashboard.
+Design system, typography, and styling utilities for IRIS ML PLATFORM.
+Minimalist, technical UI inspired by modern developer platforms (Linear, Vercel, Stripe).
 """
 
 import streamlit as st
 
 
 def apply_custom_theme() -> None:
-    """Inject polished, modern CSS styling for an enterprise ML operations console."""
+    """Inject clean, minimalist CSS design system."""
     st.markdown(
         """
         <style>
-        /* Modern ML Console Theme */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
         html, body, [class*="css"] {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: #f1f5f9;
         }
 
-        code, pre, .mono-text {
+        code, pre, .mono {
             font-family: 'JetBrains Mono', monospace !important;
         }
 
-        /* Metric Card Container */
-        .metric-card {
-            background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.07) 100%);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            border-radius: 12px;
-            padding: 18px 20px;
-            margin-bottom: 15px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            transition: transform 0.15s ease, border-color 0.15s ease;
-        }
-        .metric-card:hover {
-            border-color: rgba(99, 102, 241, 0.4);
-            transform: translateY(-2px);
+        /* Sidebar Styling */
+        [data-testid="stSidebar"] {
+            background-color: #0b0f19;
+            border-right: 1px solid #1e293b;
         }
 
-        .metric-label {
-            font-size: 0.82rem;
+        [data-testid="stSidebarNav"] {
+            padding-top: 1rem;
+        }
+
+        /* Metric Container */
+        .kpi-card {
+            background-color: #111827;
+            border: 1px solid #1f2937;
+            border-radius: 6px;
+            padding: 14px 18px;
+            margin-bottom: 12px;
+        }
+
+        .kpi-label {
+            font-size: 0.72rem;
             text-transform: uppercase;
             letter-spacing: 0.08em;
             color: #94a3b8;
             font-weight: 600;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
         }
 
-        .metric-value {
-            font-size: 1.85rem;
+        .kpi-value {
+            font-size: 1.6rem;
             font-weight: 700;
             color: #f8fafc;
+            font-family: 'JetBrains Mono', monospace;
             letter-spacing: -0.02em;
         }
 
-        .metric-subtext {
-            font-size: 0.78rem;
+        .kpi-sub {
+            font-size: 0.75rem;
             color: #64748b;
-            margin-top: 4px;
+            margin-top: 2px;
         }
 
-        /* Prediction Result Box */
-        .prediction-hero {
-            background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
-            border: 1px solid #4338ca;
-            border-radius: 16px;
+        /* Prediction Result Panel */
+        .prediction-panel {
+            background-color: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
             padding: 24px;
-            text-align: center;
+            margin-top: 16px;
             margin-bottom: 20px;
-            box-shadow: 0 8px 24px rgba(67, 56, 202, 0.2);
+        }
+
+        .prediction-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #94a3b8;
+            font-weight: 600;
         }
 
         .prediction-title {
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: #a5b4fc;
-            font-weight: 600;
-        }
-
-        .prediction-class {
-            font-size: 2.8rem;
-            font-weight: 800;
-            text-transform: capitalize;
-            color: #ffffff;
-            margin: 8px 0;
+            font-size: 2.2rem;
+            font-weight: 700;
             letter-spacing: -0.03em;
+            text-transform: uppercase;
+            margin: 6px 0 12px 0;
         }
 
-        /* Badges */
-        .status-badge-ready {
-            display: inline-flex;
-            align-items: center;
-            background-color: rgba(16, 185, 129, 0.15);
-            color: #10b981;
-            border: 1px solid rgba(16, 185, 129, 0.3);
-            border-radius: 9999px;
-            padding: 4px 12px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            letter-spacing: 0.03em;
-        }
+        .pred-setosa { color: #10b981; }
+        .pred-versicolor { color: #3b82f6; }
+        .pred-virginica { color: #a855f7; }
 
-        .status-badge-offline {
-            display: inline-flex;
-            align-items: center;
-            background-color: rgba(239, 68, 68, 0.15);
-            color: #ef4444;
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            border-radius: 9999px;
-            padding: 4px 12px;
-            font-size: 0.8rem;
-            font-weight: 600;
-        }
-
-        .pulse-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background-color: #10b981;
-            margin-right: 6px;
-            box-shadow: 0 0 8px #10b981;
-        }
-
-        .pulse-dot-red {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background-color: #ef4444;
-            margin-right: 6px;
-            box-shadow: 0 0 8px #ef4444;
-        }
-
-        /* Species Badges */
-        .badge-setosa {
-            background-color: rgba(34, 197, 94, 0.15);
-            color: #4ade80;
-            border: 1px solid rgba(34, 197, 94, 0.4);
-            border-radius: 6px;
-            padding: 2px 8px;
-            font-weight: 600;
-        }
-        .badge-versicolor {
-            background-color: rgba(59, 130, 246, 0.15);
-            color: #60a5fa;
-            border: 1px solid rgba(59, 130, 246, 0.4);
-            border-radius: 6px;
-            padding: 2px 8px;
-            font-weight: 600;
-        }
-        .badge-virginica {
-            background-color: rgba(168, 85, 247, 0.15);
-            color: #c084fc;
-            border: 1px solid rgba(168, 85, 247, 0.4);
-            border-radius: 6px;
-            padding: 2px 8px;
-            font-weight: 600;
-        }
-
-        /* Metadata Chip */
-        .meta-chip {
+        /* Status Dot */
+        .status-dot {
             display: inline-block;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 6px;
-            padding: 4px 10px;
-            font-size: 0.8rem;
-            color: #cbd5e1;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
             margin-right: 6px;
-            margin-bottom: 6px;
+        }
+        .dot-green { background-color: #10b981; }
+        .dot-amber { background-color: #f59e0b; }
+        .dot-red { background-color: #ef4444; }
+
+        /* Meta Tag */
+        .meta-tag {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.72rem;
+            font-family: 'JetBrains Mono', monospace;
+            background-color: #1e293b;
+            color: #94a3b8;
+            border: 1px solid #334155;
+            margin-right: 6px;
+        }
+
+        /* Probability Bar */
+        .prob-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+        }
+
+        .prob-bar-bg {
+            flex-grow: 1;
+            height: 8px;
+            background-color: #1e293b;
+            border-radius: 4px;
+            margin: 0 12px;
+            overflow: hidden;
+        }
+
+        .prob-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+        }
+
+        /* Button Styling */
+        .stButton button {
+            background-color: #2563eb !important;
+            color: #ffffff !important;
+            border: 1px solid #3b82f6 !important;
+            border-radius: 6px !important;
+            font-weight: 600 !important;
+            padding: 8px 20px !important;
+            transition: all 0.15s ease !important;
+        }
+
+        .stButton button:hover {
+            background-color: #1d4ed8 !important;
+            border-color: #60a5fa !important;
+        }
+
+        /* Clean Headers */
+        h1, h2, h3 {
+            letter-spacing: -0.02em;
+            color: #f8fafc;
+        }
+
+        /* Divider */
+        hr {
+            border: 0;
+            border-top: 1px solid #1e293b;
+            margin: 20px 0;
         }
         </style>
         """,
@@ -174,33 +177,8 @@ def apply_custom_theme() -> None:
     )
 
 
-def render_status_badge(is_ready: bool, is_alive: bool) -> str:
-    """Generate HTML badge for system status."""
-    if is_ready:
-        return '<span class="status-badge-ready"><span class="pulse-dot"></span>SERVICE READY</span>'
-    elif is_alive:
-        return '<span class="status-badge-ready" style="color:#f59e0b; border-color:#f59e0b;"><span class="pulse-dot" style="background:#f59e0b;"></span>DEGRADED</span>'
-    else:
-        return '<span class="status-badge-offline"><span class="pulse-dot-red"></span>BACKEND OFFLINE</span>'
-
-
-def render_species_badge(species: str) -> str:
-    """Generate styled species badge HTML."""
-    s_lower = species.lower()
-    if s_lower == "setosa":
-        return '<span class="badge-setosa">Iris Setosa</span>'
-    elif s_lower == "versicolor":
-        return '<span class="badge-versicolor">Iris Versicolor</span>'
-    elif s_lower == "virginica":
-        return '<span class="badge-virginica">Iris Virginica</span>'
-    return f'<span class="meta-chip">{species}</span>'
-
-
 def format_latency(ms: float) -> str:
-    """Format latency with millisecond precision."""
+    """Format milliseconds cleanly."""
+    if ms < 1.0:
+        return f"{ms * 1000.0:.0f} µs"
     return f"{ms:.2f} ms"
-
-
-def format_percentage(val: float) -> str:
-    """Format float as percentage string."""
-    return f"{val * 100.0:.2f}%"
