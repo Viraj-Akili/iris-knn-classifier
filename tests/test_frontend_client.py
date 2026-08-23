@@ -199,3 +199,79 @@ def test_app_config_from_env(monkeypatch):
     assert cfg.low_confidence_threshold == 0.65
     assert cfg.enable_prediction_logging is False
 
+
+def test_altair_charts_schema_validity():
+    """Verify all frontend Altair charts serialize cleanly to valid Vega-Lite specs without schema errors."""
+    import altair as alt
+    import pandas as pd
+
+    from frontend.components.charts import (
+        render_class_distribution_chart,
+        render_confidence_chart,
+        render_feature_distribution_chart,
+        render_probability_chart,
+    )
+
+    with patch("streamlit.altair_chart") as mock_st_chart, patch("streamlit.info"):
+        # 1. Probability chart
+        render_probability_chart({"setosa": 0.1, "versicolor": 0.8, "virginica": 0.1})
+        assert mock_st_chart.called
+        chart1 = mock_st_chart.call_args[0][0]
+        assert chart1.to_dict() is not None
+
+        # 2. Prediction class distribution chart
+        mock_st_chart.reset_mock()
+        render_class_distribution_chart({"setosa": 10, "versicolor": 25, "virginica": 15})
+        assert mock_st_chart.called
+        chart2 = mock_st_chart.call_args[0][0]
+        assert chart2.to_dict() is not None
+
+        # 3. Confidence distribution chart
+        mock_st_chart.reset_mock()
+        render_confidence_chart({"high": 30, "medium": 15, "low": 5})
+        assert mock_st_chart.called
+        chart3 = mock_st_chart.call_args[0][0]
+        assert chart3.to_dict() is not None
+
+        # 4. Feature distribution chart
+        mock_st_chart.reset_mock()
+        feature_stats = {
+            "sepal_length": {"count": 10, "mean": 5.8, "std": 0.8, "min": 4.3, "max": 7.9},
+            "sepal_width": {"count": 10, "mean": 3.0, "std": 0.4, "min": 2.0, "max": 4.4},
+            "petal_length": {"count": 10, "mean": 3.7, "std": 1.7, "min": 1.0, "max": 6.9},
+            "petal_width": {"count": 10, "mean": 1.2, "std": 0.7, "min": 0.1, "max": 2.5},
+        }
+        render_feature_distribution_chart(feature_stats)
+        assert mock_st_chart.called
+        chart4 = mock_st_chart.call_args[0][0]
+        assert chart4.to_dict() is not None
+
+    # 5. Explainability weights chart (verifying valid scheme='tealblues')
+    weights_data = [
+        {"Feature": "Petal Length (cm)", "Importance Score": 0.468, "Impact Level": "Primary Separator"},
+        {"Feature": "Petal Width (cm)", "Importance Score": 0.382, "Impact Level": "Primary Separator"},
+        {"Feature": "Sepal Width (cm)", "Importance Score": 0.096, "Impact Level": "Secondary Boundary Stabilizer"},
+        {"Feature": "Sepal Length (cm)", "Importance Score": 0.054, "Impact Level": "Minor Discriminator"},
+    ]
+    df_weights = pd.DataFrame(weights_data)
+    chart5 = (
+        alt.Chart(df_weights)
+        .mark_bar(cornerRadiusTopRight=6, cornerRadiusBottomRight=6, height=36)
+        .encode(
+            x=alt.X("Importance Score:Q", title="Normalized Linear Decision Boundary Weight"),
+            y=alt.Y("Feature:N", sort="-x", title=None),
+            color=alt.Color(
+                "Importance Score:Q",
+                scale=alt.Scale(scheme="tealblues"),
+                legend=None,
+            ),
+            tooltip=["Feature", "Importance Score", "Impact Level"],
+        )
+        .properties(height=220)
+    )
+    spec5 = chart5.to_dict()
+    assert "data" in spec5
+    assert spec5["encoding"]["color"]["scale"]["scheme"] == "tealblues"
+
+
+

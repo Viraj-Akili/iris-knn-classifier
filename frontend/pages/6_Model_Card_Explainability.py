@@ -127,7 +127,7 @@ with tab_xai:
             y=alt.Y("Feature:N", sort="-x", title=None),
             color=alt.Color(
                 "Importance Score:Q",
-                scale=alt.Scale(scheme="indigo"),
+                scale=alt.Scale(scheme="tealblues"),
                 legend=None,
             ),
             tooltip=["Feature", "Importance Score", "Impact Level"],
