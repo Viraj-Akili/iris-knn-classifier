@@ -1,7 +1,10 @@
 """
 IRIS ML - Drift Module
 Statistical feature drift monitoring (Two-Sample KS, Wasserstein distance, PSI).
+Strictly uses the canonical stratified training baseline distribution (N=120).
 """
+
+import logging
 
 import altair as alt
 import numpy as np
@@ -22,31 +25,43 @@ from src.config import get_default_config
 from src.data.loader import load_and_validate_dataset, split_dataset
 from src.monitoring.drift import DataDriftDetector
 
+logger = logging.getLogger(__name__)
+
 apply_custom_theme()
 api_client = IrisApiClient()
 render_sidebar_navigation(api_client)
-render_header(api_client, title="Feature drift", subtitle="Compare current observations against the training reference distribution.")
+render_header(
+    api_client,
+    title="Feature drift",
+    subtitle="Compare current observations against the training reference distribution.",
+)
 
 
-# Robust dataset loader compatible locally, in Docker, and on Render
 @st.cache_data
 def get_training_reference():
-    try:
-        config = get_default_config()
-        X, y, feature_names, target_names = load_and_validate_dataset(config)
-        splits = split_dataset(X, y, feature_names, target_names, config)
-        return splits.X_train, splits.X_test
-    except Exception:
-        # Fallback direct load
-        from sklearn.datasets import load_iris
-        iris = load_iris(as_frame=True)
-        df = iris.frame
-        features = list(iris.feature_names)
-        return df[features].iloc[:120], df[features].iloc[120:]
+    """Load canonical training baseline using the verified ML pipeline configuration."""
+    config = get_default_config()
+    X, y, feature_names, target_names = load_and_validate_dataset(config)
+    splits = split_dataset(X, y, feature_names, target_names, config)
+    return splits.X_train, splits.X_test
 
+
+reference_loaded = False
+X_train, X_test = None, None
 
 try:
     X_train, X_test = get_training_reference()
+    reference_loaded = True
+except (ValueError, FileNotFoundError, KeyError) as e:
+    logger.error("Failed to load canonical reference dataset: %s", e)
+    st.error("Reference dataset unavailable")
+    st.caption("Drift analysis cannot be computed until the training reference distribution is available.")
+except Exception as e:
+    logger.exception("Unexpected error while loading reference dataset: %s", e)
+    st.error("Reference dataset unavailable")
+    st.caption("Drift analysis cannot be computed until the training reference distribution is available.")
+
+if reference_loaded and X_train is not None and X_test is not None:
     detector = DataDriftDetector(baseline_df=X_train)
 
     # Comparison Dataset Selector
@@ -54,7 +69,10 @@ try:
     with col_sel1:
         dataset_mode = st.selectbox(
             "Evaluation batch",
-            options=["Holdout Test Baseline (N=30, Unshifted)", "Simulated Production Shift (N=50, Morphological Drift)"],
+            options=[
+                "Holdout Test Baseline (N=30, Unshifted)",
+                "Simulated Production Shift (N=50, Morphological Drift)",
+            ],
             index=0,
         )
 
@@ -63,8 +81,12 @@ try:
     else:
         np.random.seed(42)
         current_df = X_test.copy()
-        current_df["sepal length (cm)"] = current_df["sepal length (cm)"] + np.random.normal(1.1, 0.3, len(current_df))
-        current_df["petal length (cm)"] = current_df["petal length (cm)"] + np.random.normal(1.6, 0.4, len(current_df))
+        current_df["sepal length (cm)"] = current_df["sepal length (cm)"] + np.random.normal(
+            1.1, 0.3, len(current_df)
+        )
+        current_df["petal length (cm)"] = current_df["petal length (cm)"] + np.random.normal(
+            1.6, 0.4, len(current_df)
+        )
 
     # Reference vs Current Counts
     st.markdown(
@@ -83,7 +105,6 @@ try:
     else:
         # Compute real statistical drift
         summary = detector.evaluate_drift(current_df)
-        df_summary = summary.to_dataframe()
 
         # Format display table with requested columns
         table_rows = []
@@ -114,7 +135,8 @@ try:
 
         df_plot = pd.DataFrame({
             "Value": list(ref_series) + list(curr_series),
-            "Distribution": ["Reference (Training)" for _ in range(len(ref_series))] + ["Current Batch" for _ in range(len(curr_series))],
+            "Distribution": ["Reference (Training)" for _ in range(len(ref_series))]
+            + ["Current Batch" for _ in range(len(curr_series))],
         })
 
         chart = (
@@ -126,11 +148,22 @@ try:
             )
             .mark_area(opacity=0.4)
             .encode(
-                x=alt.X("Value:Q", title=f"{feature_to_plot.title()} (cm)", axis=alt.Axis(labelColor="#94a3b8", titleColor="#64748b")),
-                y=alt.Y("Density:Q", title="Density", axis=alt.Axis(labelColor="#94a3b8", titleColor="#64748b")),
+                x=alt.X(
+                    "Value:Q",
+                    title=f"{feature_to_plot.title()} (cm)",
+                    axis=alt.Axis(labelColor="#94a3b8", titleColor="#64748b"),
+                ),
+                y=alt.Y(
+                    "Density:Q",
+                    title="Density",
+                    axis=alt.Axis(labelColor="#94a3b8", titleColor="#64748b"),
+                ),
                 color=alt.Color(
                     "Distribution:N",
-                    scale=alt.Scale(domain=["Reference (Training)", "Current Batch"], range=["#3b82f6", "#f59e0b"]),
+                    scale=alt.Scale(
+                        domain=["Reference (Training)", "Current Batch"],
+                        range=["#3b82f6", "#f59e0b"],
+                    ),
                     legend=alt.Legend(orient="top", title=None, labelColor="#f8fafc"),
                 ),
             )
@@ -138,6 +171,3 @@ try:
         )
 
         st.altair_chart(chart, use_container_width=True)
-
-except Exception:
-    st.error("Something went wrong while loading the feature drift analysis.")

@@ -355,7 +355,65 @@ def test_all_streamlit_pages_execution():
         assert not at.exception, f"Streamlit page {page_path.name} raised unexpected exception: {at.exception}"
 
 
+def test_drift_reference_data_stratified_distribution_integrity():
+
+    """Verify that drift reference baseline preserves the canonical 120-sample 40/40/40 stratified distribution."""
+    from src.config import ExperimentConfig, get_default_config
+    from src.data.loader import load_and_validate_dataset, split_dataset
+
+    config = get_default_config()
+    assert isinstance(config, ExperimentConfig)
+
+    X, y, feature_names, target_names = load_and_validate_dataset(config)
+    splits = split_dataset(X, y, feature_names, target_names, config)
+
+    # 1. Shape verifications
+    assert len(splits.X_train) == 120
+    assert len(splits.X_test) == 30
+    assert len(splits.y_train) == 120
+    assert len(splits.y_test) == 30
+
+    # 2. Stratified class balance in training reference (40 Setosa, 40 Versicolor, 40 Virginica)
+    train_counts = splits.y_train.value_counts().to_dict()
+    assert train_counts == {0: 40, 1: 40, 2: 40}
+
+    # 3. Stratified class balance in holdout test set (10 Setosa, 10 Versicolor, 10 Virginica)
+    test_counts = splits.y_test.value_counts().to_dict()
+    assert test_counts == {0: 10, 1: 10, 2: 10}
 
 
+def test_drift_page_no_unstratified_fallback_used():
+    """Verify Drift module never uses naive unstratified iloc[:120] slices."""
+    from pathlib import Path
 
+    drift_script_path = Path(__file__).resolve().parent.parent / "frontend/pages/3_Drift.py"
+    content = drift_script_path.read_text(encoding="utf-8")
+
+    assert "iloc[:120]" not in content
+    assert "iloc[120:]" not in content
+    assert "load_and_validate_dataset" in content
+    assert "split_dataset" in content
+    assert "splits.X_train" in content
+
+
+def test_drift_page_reference_failure_displays_clean_error():
+    """Verify that when reference dataset loading fails, clean user error is shown without crashing."""
+    from pathlib import Path
+    from unittest.mock import patch
+
+    import streamlit as st
+    from streamlit.testing.v1 import AppTest
+
+    project_root = Path(__file__).resolve().parent.parent
+    drift_script_path = project_root / "frontend/pages/3_Drift.py"
+
+    st.cache_data.clear()
+    with patch("src.data.loader.load_and_validate_dataset", side_effect=ValueError("Dataset corrupt")):
+        st.cache_data.clear()
+        at = AppTest.from_file(drift_script_path, default_timeout=15)
+        at.run()
+        assert not at.exception
+        # Confirm error message rendered
+        errors = [e.value for e in at.error]
+        assert any("Reference dataset unavailable" in err for err in errors)
 
