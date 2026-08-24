@@ -10,6 +10,22 @@ import streamlit as st
 from frontend.api_client import IrisApiClient
 
 
+def _safe_page_link(page_path: str, label: str) -> None:
+    """Render page link with graceful fallback across directory scopes."""
+    try:
+        st.page_link(page_path, label=label)
+    except Exception:
+        try:
+            alt_path = (
+                f"frontend/{page_path}"
+                if not page_path.startswith("frontend/")
+                else page_path.replace("frontend/", "")
+            )
+            st.page_link(alt_path, label=label)
+        except Exception:
+            pass
+
+
 def render_sidebar_navigation(client: IrisApiClient) -> dict[str, Any]:
     """Render unified product identity, workspace links, and system status in sidebar."""
     with st.sidebar:
@@ -29,12 +45,12 @@ def render_sidebar_navigation(client: IrisApiClient) -> dict[str, Any]:
             '<div style="font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #475569; margin: 10px 0 4px 0;">Workspace</div>',
             unsafe_allow_html=True,
         )
-        st.page_link("app.py", label="Overview")
-        st.page_link("pages/1_Predict.py", label="Predict")
-        st.page_link("pages/2_Monitor.py", label="Monitor")
-        st.page_link("pages/3_Drift.py", label="Drift")
-        st.page_link("pages/4_Models.py", label="Models")
-        st.page_link("pages/5_Evaluation.py", label="Evaluation")
+        _safe_page_link("frontend/app.py" if st.session_state.get("_is_pkg") else "app.py", "Overview")
+        _safe_page_link("pages/1_Predict.py", "Predict")
+        _safe_page_link("pages/2_Monitor.py", "Monitor")
+        _safe_page_link("pages/3_Drift.py", "Drift")
+        _safe_page_link("pages/4_Models.py", "Models")
+        _safe_page_link("pages/5_Evaluation.py", "Evaluation")
 
         st.markdown("<hr style='margin: 12px 0; border-color: #1e293b;'/>", unsafe_allow_html=True)
 
@@ -43,7 +59,7 @@ def render_sidebar_navigation(client: IrisApiClient) -> dict[str, Any]:
             '<div style="font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #475569; margin: 0 0 4px 0;">System</div>',
             unsafe_allow_html=True,
         )
-        st.page_link("pages/6_Model.py", label="Model")
+        _safe_page_link("pages/6_Model.py", "Model")
 
         st.markdown("<hr style='margin: 12px 0; border-color: #1e293b;'/>", unsafe_allow_html=True)
 

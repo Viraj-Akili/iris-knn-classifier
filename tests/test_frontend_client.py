@@ -332,5 +332,30 @@ def test_sidebar_navigation_rendering(api_client):
             assert health_offline == {}
 
 
+def test_all_streamlit_pages_execution():
+    """Verify that all 7 Streamlit pages compile and execute cleanly with AppTest without exceptions."""
+    from pathlib import Path
+
+    from streamlit.testing.v1 import AppTest
+
+    project_root = Path(__file__).resolve().parent.parent
+    pages = [
+        project_root / "frontend/app.py",
+        project_root / "frontend/pages/1_Predict.py",
+        project_root / "frontend/pages/2_Monitor.py",
+        project_root / "frontend/pages/3_Drift.py",
+        project_root / "frontend/pages/4_Models.py",
+        project_root / "frontend/pages/5_Evaluation.py",
+        project_root / "frontend/pages/6_Model.py",
+    ]
+
+    for page_path in pages:
+        at = AppTest.from_file(page_path, default_timeout=15)
+        at.run()
+        assert not at.exception, f"Streamlit page {page_path.name} raised unexpected exception: {at.exception}"
+
+
+
+
 
 
